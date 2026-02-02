@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Make Mass Standard Again</title>
+    <link rel="icon" href="photos/upside_down_us_flag.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="window">
+      <header class="titlebar">
+        <div class="titlebar-top">
+          <div class="mini-stat">
+            <div class="mini-label">Silver (USD/oz)</div>
+            <div id="silverPrice" class="mini-value">-</div>
+          </div>
+          <div class="mini-stat">
+            <div class="mini-label">Gold (USD/oz)</div>
+            <div id="goldPrice" class="mini-value">-</div>
+          </div>
+        </div>
+        <div class="title-row">
+          <img
+            class="title-flag"
+            src="photos/upside_down_us_flag.svg"
+            alt="Upside down U.S. flag"
+          />
+          <div class="title">Make Mass Standard Again</div>
+          <img
+            class="title-flag title-flag-right"
+            src="photos/upside_down_us_flag.svg"
+            alt="Upside down U.S. flag"
+          />
+        </div>
+        <div class="subtitle">One nation, under the duress of money printing, with liberty and justice inflated away.</div>
+        <nav class="header-nav">
+          <a class="header-nav-link" href="#coins">US Coins</a>
+          <a class="header-nav-link" href="#shop">Shop</a>
+          <a class="header-nav-link" href="#dashboard">Charts</a>
+        </nav>
+      </header>
+
+      <section class="panel" id="dashboard">
+        <div class="panel-body">
+          <div class="hero-topline">
+          </div>
+          <div class="hero-metrics">
+            <div class="hero-metric hero-metric-silver">
+              <div class="hero-label">inflation of the</div>
+              <div class="hero-label">U.S. Silver Dollar</div>
+              <div id="debasementPercent" class="hero-value">-</div>
+              <div id="debasementDetail" class="hero-sub">-</div>
+            </div>
+            <div class="hero-metric hero-metric-gold">
+              <div class="hero-label">inflation of the</div>
+              <div class="hero-label">U.S. Gold Dollar  </div>
+              <div id="goldInflationPercent" class="hero-value">-</div>
+              <div id="goldInflationDetail" class="hero-sub">-</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+  
+      <section class="panel coin-panel" id="shop">
+        
+        <div class="panel-body">
+          <div class="merch-grid">
+            <a class="merch-card" href="#shop-detail">
+              <img
+                src="photos/Eagle%20and%20liberty%20on%20organic%20tee.png"
+                alt="Eagle and Liberty shirt"
+              />
+            </a>
+            <a class="merch-card merch-feature" href="#shop-detail">
+              <img
+                src="photos/one%20nation%20hat.png"
+                alt="One Nation hat"
+              />
+            </a>
+            <a class="merch-card" href="#shop-detail">
+              <img
+                src="photos/put%20mass%20back.jpg"
+                alt="Put Mass Back shirt"
+              />
+            </a>
+            <a class="merch-card" href="#shop-detail">
+              <img
+                src="photos/Eagle%20and%20liberty%20on%20organic%20tee.png"
+                alt="Eagle and Liberty shirt"
+              />
+            </a>
+            <a class="merch-card merch-feature" href="#shop-detail">
+              <img
+                src="photos/one%20nation%20hat.png"
+                alt="One Nation hat"
+              />
+            </a>
+            <a class="merch-card" href="#shop-detail">
+              <img
+                src="photos/put%20mass%20back.jpg"
+                alt="Put Mass Back shirt"
+              />
+            </a>
+          </div>
+          <div class="merch-cta">
+            <a class="merch-cta-button" href="#shop-detail">Preview Merch Now</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="mission">
+        <div class="panel-title">Money is measured in grains and ounces, not paper and pixels.</div>
+        <div class="panel-body">
+          <p class="mission">
+            The United States Dollar once had a standard mass. The Coinage Act of 1792 set $1 at 371.25
+            grains of silver (0.77344 troy oz) and 24.75 grains of gold (0.05156 troy oz).
+            In this bimetallic system, at a ratio of 15:1, a specific mass of gold and silver defined the dollar. Over the next 179 years, each passage of a new Coinage Act lightened the mass defining the dollar. To now, where no mass defines the dollar, but rather a paper decree of infinite supply.
+            <span class="mission-highlight">
+              <span class="mission-lead">What used to be $1, is today in mass:</span>
+              <span class="mission-price-line">
+                <span id="silverDollarNow" class="mission-price-figure hero-value">-</span>
+                <span class="mission-price-label">in silver</span>
+              </span>
+              <span class="mission-price-line">
+                <span id="goldDollarNow" class="mission-price-figure hero-value">-</span>
+                <span class="mission-price-label">in gold</span>
+              </span>
+            </span>
+          </p>
+        </div>
+      </section>
+
+      <section class="panel" id="coins">
+        <div class="panel-title">Live Metal Value of Circulating U.S. Coins</div>
+        <div class="panel-body">
+          <div class="panel-note">Metal values use live spot prices and each coin's actual gold weight (AGW) and actual silver weight (ASW).</div>
+          <div class="coin-nav">
+            <a class="coin-nav-link" href="#coin-silver">Silver</a>
+            <a class="coin-nav-link" href="#coin-gold">Gold</a>
+          </div>
+          <div id="coinGrid" class="coin-grid"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="shop-detail">
+        <div class="panel-title">Shop Merchandise</div>
+        <div class="panel-body">
+          <div class="panel-note">Preview the current lineup. More items added regularly.</div>
+          <div class="shop-grid">
+            <div class="shop-card">
+              <img
+                class="shop-image"
+                src="photos/one%20nation%20hat.png"
+                alt="One Nation hat"
+              />
+              <div class="shop-body">
+                <div class="shop-title">One Nation Hat</div>
+                <div class="shop-sub">Structured cap, stitched front.</div>
+              </div>
+            </div>
+            <div class="shop-card">
+              <img
+                class="shop-image"
+                src="photos/put%20mass%20back.png"
+                alt="Put Mass Back shirt"
+              />
+              <div class="shop-body">
+                <div class="shop-title">Put Mass Back Tee</div>
+                <div class="shop-sub">Soft cotton, classic fit.</div>
+              </div>
+            </div>
+            <div class="shop-card">
+              <img
+                class="shop-image"
+                src="photos/liberty%20and%20justice.png"
+                alt="Liberty and Justice graphic"
+              />
+              <div class="shop-body">
+                <div class="shop-title">Liberty and Justice Tee</div>
+                <div class="shop-sub">Statement graphic, premium feel.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
