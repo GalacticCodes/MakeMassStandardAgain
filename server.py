@@ -10,6 +10,13 @@ YAHOO_URL = "https://query1.finance.yahoo.com/v7/finance/quote"
 CACHE_TTL_SECONDS = 24 * 60 * 60
 CACHE = {"timestamp": 0, "data": b""}
 CACHE_FILE = "yahoo_cache.json"
+FRED_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id="
+FRED_CACHE_TTL_SECONDS = 6 * 60 * 60
+FRED_CACHE = {}
+FRED_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+    "Accept": "text/csv",
+}
 
 
 def load_cache():
@@ -47,6 +54,56 @@ class YahooProxyHandler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
+        if parsed.path == "/fred":
+            params = urllib.parse.parse_qs(parsed.query)
+            series = params.get("series", [""])[0]
+            if not series.strip():
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(
+                    json.dumps({"error": "series parameter required"}).encode("utf-8")
+                )
+                return
+
+            now = int(__import__("time").time())
+            cached = FRED_CACHE.get(series)
+            if cached and now - cached["timestamp"] < FRED_CACHE_TTL_SECONDS:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/csv")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(cached["data"])
+                return
+
+            url = f"{FRED_URL}{urllib.parse.quote(series)}"
+            try:
+                request = urllib.request.Request(url, headers=FRED_HEADERS)
+                with urllib.request.urlopen(request, timeout=10) as resp:
+                    data = resp.read()
+                    FRED_CACHE[series] = {"timestamp": now, "data": data}
+                    self.send_response(resp.status)
+                    self.send_header("Content-Type", "text/csv")
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    self.wfile.write(data)
+            except Exception as exc:
+                self.send_response(502)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(
+                    json.dumps(
+                        {
+                            "error": "FRED fetch failed",
+                            "detail": str(exc),
+                            "url": url,
+                        }
+                    ).encode("utf-8")
+                )
+            return
+
         if parsed.path != "/quote":
             self.send_response(404)
             self.send_header("Content-Type", "application/json")

@@ -111,6 +111,21 @@ const elements = {
   coinGrid: document.getElementById("coinGrid"),
   silverDollarNow: document.getElementById("silverDollarNow"),
   goldDollarNow: document.getElementById("goldDollarNow"),
+  chartMoneySupply: document.getElementById("chartMoneySupply"),
+  chartAssetWages: document.getElementById("chartAssetWages"),
+  chartPurchasingPower: document.getElementById("chartPurchasingPower"),
+  chartFedBalance: document.getElementById("chartFedBalance"),
+  chartRealRates: document.getElementById("chartRealRates"),
+  chartMoneySupplyClone: document.getElementById("chartMoneySupplyClone"),
+  chartAssetWagesClone: document.getElementById("chartAssetWagesClone"),
+  chartPurchasingPowerClone: document.getElementById("chartPurchasingPowerClone"),
+  chartFedBalanceClone: document.getElementById("chartFedBalanceClone"),
+  chartRealRatesClone: document.getElementById("chartRealRatesClone"),
+  chartModal: document.getElementById("chartModal"),
+  chartModalTitle: document.getElementById("chartModalTitle"),
+  chartModalSub: document.getElementById("chartModalSub"),
+  chartModalCanvas: document.getElementById("chartModalCanvas"),
+  chartModalSource: document.getElementById("chartModalSource"),
 };
 
 const constitutionalSilver = {
@@ -796,6 +811,9 @@ function renderLineChart(svg, rows, options = {}) {
   const scaleY = (value) =>
     padding.top + (1 - (value - minValue) / (maxValue - minValue || 1)) * plotHeight;
 
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("preserveAspectRatio", "none");
+
   const axis = document.createElementNS("http://www.w3.org/2000/svg", "path");
   axis.setAttribute(
     "d",
@@ -825,8 +843,10 @@ function renderLineChart(svg, rows, options = {}) {
   const startLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
   startLabel.setAttribute("x", padding.left);
   startLabel.setAttribute("y", height - 8);
-  startLabel.setAttribute("font-size", "10");
-  startLabel.setAttribute("fill", "#64748b");
+  startLabel.setAttribute("font-size", "12");
+  startLabel.setAttribute("fill", "#1f2a44");
+  startLabel.setAttribute("font-weight", "700");
+  startLabel.setAttribute("letter-spacing", "0.6");
   startLabel.textContent = rows[0].date.getFullYear();
   svg.appendChild(startLabel);
 
@@ -834,18 +854,520 @@ function renderLineChart(svg, rows, options = {}) {
   endLabel.setAttribute("x", width - padding.right);
   endLabel.setAttribute("y", height - 8);
   endLabel.setAttribute("text-anchor", "end");
-  endLabel.setAttribute("font-size", "10");
-  endLabel.setAttribute("fill", "#64748b");
+  endLabel.setAttribute("font-size", "12");
+  endLabel.setAttribute("fill", "#1f2a44");
+  endLabel.setAttribute("font-weight", "700");
+  endLabel.setAttribute("letter-spacing", "0.6");
   endLabel.textContent = rows[rows.length - 1].date.getFullYear();
   svg.appendChild(endLabel);
 
   const topLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
   topLabel.setAttribute("x", padding.left);
   topLabel.setAttribute("y", padding.top - 6);
-  topLabel.setAttribute("font-size", "10");
-  topLabel.setAttribute("fill", "#64748b");
+  topLabel.setAttribute("font-size", "12");
+  topLabel.setAttribute("fill", "#1f2a44");
+  topLabel.setAttribute("font-weight", "700");
+  topLabel.setAttribute("letter-spacing", "0.6");
   topLabel.textContent = `$${formatNumber(maxValue, 0)}`;
   svg.appendChild(topLabel);
+}
+
+const FRED_BASE_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=";
+const FRED_PROXY_URL = "http://localhost:4180/fred?series=";
+const FRED_SERIES = {
+  m2: "M2SL",
+  cpi: "CPIAUCSL",
+  income: "MEHOINUSA646N",
+  home: "MSPUS",
+  sp500: "SP500",
+  tuition: "CUUR0000SEEB01",
+  fedBalance: "WALCL",
+  fedFunds: "FEDFUNDS",
+};
+const FRED_CACHE = {};
+const CHART_COLORS = {
+  m2: "#1d3f8b",
+  purchasingPower: "#b22234",
+  wages: "#b22234",
+  home: "#1d3f8b",
+  sp500: "#1d3f8b",
+  tuition: "#b22234",
+  fedBalance: "#b22234",
+  realRate: "#b22234",
+};
+
+function parseFredCsv(text) {
+  const lines = text.trim().split("\n");
+  const rows = [];
+  for (let i = 1; i < lines.length; i += 1) {
+    const parts = lines[i].split(",");
+    if (parts.length < 2) {
+      continue;
+    }
+    const date = new Date(parts[0]);
+    const value = Number(parts[1]);
+    if (!parts[1] || parts[1] === "." || Number.isNaN(value)) {
+      continue;
+    }
+    if (Number.isNaN(date.getTime())) {
+      continue;
+    }
+    rows.push({ date, value });
+  }
+  return rows;
+}
+
+function setChartStatus(id, message) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.textContent = message;
+  }
+}
+
+async function fetchFredSeries(seriesId) {
+  if (FRED_CACHE[seriesId]) {
+    return FRED_CACHE[seriesId];
+  }
+  const url = `${FRED_PROXY_URL}${seriesId}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`FRED request failed: ${response.status}`);
+  }
+  const text = await response.text();
+  const rows = parseFredCsv(text);
+  FRED_CACHE[seriesId] = rows;
+  return rows;
+}
+
+function filterFromYear(rows, startYear) {
+  return rows.filter((row) => row.date.getFullYear() >= startYear);
+}
+
+function findBaseRow(rows, baseYear) {
+  const inYear = rows.find((row) => row.date.getFullYear() === baseYear);
+  if (inYear) {
+    return inYear;
+  }
+  return rows.find((row) => row.date.getFullYear() > baseYear) || null;
+}
+
+function indexSeries(rows, baseYear) {
+  const baseRow = findBaseRow(rows, baseYear);
+  if (!baseRow) {
+    return { rows: [], baseYearUsed: null };
+  }
+  const baseValue = baseRow.value || 1;
+  return {
+    rows: rows.map((row) => ({
+      date: row.date,
+      value: (row.value / baseValue) * 100,
+    })),
+    baseYearUsed: baseRow.date.getFullYear(),
+  };
+}
+
+function percentChangeSeries(rows, baseYear, inverse = false) {
+  const baseRow = findBaseRow(rows, baseYear);
+  if (!baseRow) {
+    return { rows: [], baseYearUsed: null };
+  }
+  const baseValue = baseRow.value || 1;
+  return {
+    rows: rows.map((row) => ({
+      date: row.date,
+      value: inverse
+        ? ((baseValue / row.value) - 1) * 100
+        : ((row.value / baseValue) - 1) * 100,
+    })),
+    baseYearUsed: baseRow.date.getFullYear(),
+  };
+}
+
+function computePurchasingPower(cpiRows, baseYear) {
+  const baseRow = findBaseRow(cpiRows, baseYear);
+  if (!baseRow) {
+    return { rows: [], baseYearUsed: null };
+  }
+  const baseValue = baseRow.value || 1;
+  return {
+    rows: cpiRows.map((row) => ({
+      date: row.date,
+      value: (baseValue / row.value) * 100,
+    })),
+    baseYearUsed: baseRow.date.getFullYear(),
+  };
+}
+
+function computeYoYInflation(cpiRows) {
+  const byMonth = new Map();
+  cpiRows.forEach((row) => {
+    const key = `${row.date.getFullYear()}-${row.date.getMonth()}`;
+    byMonth.set(key, row.value);
+  });
+  const rows = [];
+  cpiRows.forEach((row) => {
+    const prevYear = row.date.getFullYear() - 1;
+    const key = `${prevYear}-${row.date.getMonth()}`;
+    const prevValue = byMonth.get(key);
+    if (!prevValue) {
+      return;
+    }
+    const inflation = ((row.value / prevValue) - 1) * 100;
+    rows.push({ date: row.date, value: inflation });
+  });
+  return rows;
+}
+
+function renderEmptyChart(svg, message) {
+  if (!svg) {
+    return;
+  }
+  svg.innerHTML = "";
+  const width = 800;
+  const height = 240;
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("preserveAspectRatio", "none");
+  const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  label.setAttribute("x", width / 2);
+  label.setAttribute("y", height / 2);
+  label.setAttribute("text-anchor", "middle");
+  label.setAttribute("font-size", "12");
+  label.setAttribute("fill", "#94a3b8");
+  label.textContent = message;
+  svg.appendChild(label);
+}
+
+function buildLinePath(rows, scaleX, scaleY, step) {
+  if (!rows.length) {
+    return "";
+  }
+  if (!step) {
+    return rows
+      .map((row, index) => {
+        const x = scaleX(row.date);
+        const y = scaleY(row.value);
+        return `${index === 0 ? "M" : "L"} ${x} ${y}`;
+      })
+      .join(" ");
+  }
+  let path = "";
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i];
+    const x = scaleX(row.date);
+    const y = scaleY(row.value);
+    if (i === 0) {
+      path += `M ${x} ${y}`;
+      continue;
+    }
+    path += ` H ${x} V ${y}`;
+  }
+  return path;
+}
+
+function renderMultiLineChart(svg, seriesList, options = {}) {
+  if (!svg) {
+    return;
+  }
+  const series = seriesList.filter((item) => item.rows && item.rows.length);
+  if (!series.length) {
+    renderEmptyChart(svg, "No data");
+    return;
+  }
+  svg.innerHTML = "";
+  const width = 800;
+  const height = 240;
+  const padding = { left: 50, right: 20, top: 20, bottom: 30 };
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
+
+  const allRows = series.flatMap((item) => item.rows);
+  const minDate = Math.min(...allRows.map((row) => row.date.getTime()));
+  const maxDate = Math.max(...allRows.map((row) => row.date.getTime()));
+  let values = allRows.map((row) => row.value);
+  let minValue = Math.min(...values);
+  let maxValue = Math.max(...values);
+  if (options.includeZero) {
+    minValue = Math.min(minValue, 0);
+    maxValue = Math.max(maxValue, 0);
+  }
+  if (typeof options.minValue === "number") {
+    minValue = options.minValue;
+  }
+  if (typeof options.maxValue === "number") {
+    maxValue = options.maxValue;
+  }
+
+  const scaleX = (date) =>
+    padding.left +
+    ((date.getTime() - minDate) / (maxDate - minDate || 1)) * plotWidth;
+  const scaleY = (value) =>
+    padding.top + (1 - (value - minValue) / (maxValue - minValue || 1)) * plotHeight;
+
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("preserveAspectRatio", "none");
+
+  const axis = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  axis.setAttribute(
+    "d",
+    `M ${padding.left} ${padding.top} V ${height - padding.bottom} H ${
+      width - padding.right
+    }`
+  );
+  axis.setAttribute("stroke", "#cbd5e1");
+  axis.setAttribute("fill", "none");
+  axis.setAttribute("stroke-width", "1");
+  svg.appendChild(axis);
+
+  if (options.rightAxis) {
+    const axisRight = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    axisRight.setAttribute(
+      "d",
+      `M ${width - padding.right} ${padding.top} V ${height - padding.bottom}`
+    );
+    axisRight.setAttribute("stroke", "#cbd5e1");
+    axisRight.setAttribute("fill", "none");
+    axisRight.setAttribute("stroke-width", "1");
+    svg.appendChild(axisRight);
+  }
+
+  if (options.zeroLine) {
+    const zero = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    zero.setAttribute("x1", padding.left);
+    zero.setAttribute("x2", width - padding.right);
+    zero.setAttribute("y1", scaleY(0));
+    zero.setAttribute("y2", scaleY(0));
+    zero.setAttribute("stroke", "#94a3b8");
+    zero.setAttribute("stroke-dasharray", "4 4");
+    zero.setAttribute("stroke-width", "1");
+    svg.appendChild(zero);
+  }
+
+  if (options.eventMarkers && options.eventMarkers.length) {
+    options.eventMarkers.forEach((marker) => {
+      const x = scaleX(new Date(marker.year, 0, 1));
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", x);
+      line.setAttribute("x2", x);
+      line.setAttribute("y1", padding.top);
+      line.setAttribute("y2", height - padding.bottom);
+      line.setAttribute("stroke", "#e2e8f0");
+      line.setAttribute("stroke-width", "1");
+      svg.appendChild(line);
+
+      const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      label.setAttribute("x", x + 4);
+      label.setAttribute("y", padding.top + 12);
+      label.setAttribute("font-size", "9");
+      label.setAttribute("fill", "#94a3b8");
+      label.textContent = marker.label || marker.year;
+      svg.appendChild(label);
+    });
+  }
+
+  series.forEach((item) => {
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    const path = buildLinePath(item.rows, scaleX, scaleY, item.step);
+    line.setAttribute("d", path);
+    line.setAttribute("stroke", item.color || "#1d3f8b");
+    line.setAttribute("fill", "none");
+    line.setAttribute("stroke-width", item.strokeWidth || "2");
+    svg.appendChild(line);
+  });
+
+  const startLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  startLabel.setAttribute("x", padding.left);
+  startLabel.setAttribute("y", height - 8);
+  startLabel.setAttribute("font-size", "12");
+  startLabel.setAttribute("fill", "#1f2a44");
+  startLabel.setAttribute("font-weight", "700");
+  startLabel.setAttribute("letter-spacing", "0.6");
+  startLabel.textContent = new Date(minDate).getFullYear();
+  svg.appendChild(startLabel);
+
+  const endLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  endLabel.setAttribute("x", width - padding.right);
+  endLabel.setAttribute("y", height - 8);
+  endLabel.setAttribute("text-anchor", "end");
+  endLabel.setAttribute("font-size", "12");
+  endLabel.setAttribute("fill", "#1f2a44");
+  endLabel.setAttribute("font-weight", "700");
+  endLabel.setAttribute("letter-spacing", "0.6");
+  endLabel.textContent = new Date(maxDate).getFullYear();
+  svg.appendChild(endLabel);
+
+  const labelFormatter =
+    options.labelFormatter || ((value) => formatNumber(value, 0));
+
+  const topLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  topLabel.setAttribute("x", padding.left);
+  topLabel.setAttribute("y", padding.top - 6);
+  topLabel.setAttribute("font-size", "12");
+  topLabel.setAttribute("fill", "#1f2a44");
+  topLabel.setAttribute("font-weight", "700");
+  topLabel.setAttribute("letter-spacing", "0.6");
+  topLabel.textContent = labelFormatter(maxValue);
+  svg.appendChild(topLabel);
+
+  if (options.rightLabel) {
+    const rightLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    rightLabel.setAttribute("x", width - padding.right);
+    rightLabel.setAttribute("y", padding.top - 6);
+    rightLabel.setAttribute("text-anchor", "end");
+    rightLabel.setAttribute("font-size", "12");
+    rightLabel.setAttribute("fill", "#1f2a44");
+    rightLabel.setAttribute("font-weight", "700");
+    rightLabel.setAttribute("letter-spacing", "0.6");
+    rightLabel.textContent = options.rightLabel;
+    svg.appendChild(rightLabel);
+  }
+}
+
+function renderDualAxisChart(svg, leftSeries, rightSeries, options = {}) {
+  if (!svg || !leftSeries.rows.length || !rightSeries.rows.length) {
+    renderEmptyChart(svg, "No data");
+    return;
+  }
+  svg.innerHTML = "";
+  const width = 800;
+  const height = 240;
+  const padding = { left: 56, right: 56, top: 26, bottom: 30 };
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
+
+  const allRows = [...leftSeries.rows, ...rightSeries.rows];
+  const minDate = Math.min(...allRows.map((row) => row.date.getTime()));
+  const maxDate = Math.max(...allRows.map((row) => row.date.getTime()));
+
+  const leftValues = leftSeries.rows.map((row) => row.value);
+  const rightValues = rightSeries.rows.map((row) => row.value);
+  const minLeft = Math.min(...leftValues);
+  const maxLeft = Math.max(...leftValues);
+  const minRight = Math.min(...rightValues);
+  const maxRight = Math.max(...rightValues);
+
+  const scaleX = (date) =>
+    padding.left +
+    ((date.getTime() - minDate) / (maxDate - minDate || 1)) * plotWidth;
+  const scaleYLeft = (value) =>
+    padding.top + (1 - (value - minLeft) / (maxLeft - minLeft || 1)) * plotHeight;
+  const scaleYRight = (value) =>
+    padding.top + (1 - (value - minRight) / (maxRight - minRight || 1)) * plotHeight;
+
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("preserveAspectRatio", "none");
+
+  const axis = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  axis.setAttribute(
+    "d",
+    `M ${padding.left} ${padding.top} V ${height - padding.bottom} H ${
+      width - padding.right
+    }`
+  );
+  axis.setAttribute("stroke", "#cbd5e1");
+  axis.setAttribute("fill", "none");
+  axis.setAttribute("stroke-width", "1");
+  svg.appendChild(axis);
+
+  const axisRight = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  axisRight.setAttribute(
+    "d",
+    `M ${width - padding.right} ${padding.top} V ${height - padding.bottom}`
+  );
+  axisRight.setAttribute("stroke", "#cbd5e1");
+  axisRight.setAttribute("fill", "none");
+  axisRight.setAttribute("stroke-width", "1");
+  svg.appendChild(axisRight);
+
+  const leftLine = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  leftLine.setAttribute(
+    "d",
+    buildLinePath(leftSeries.rows, scaleX, scaleYLeft, leftSeries.step)
+  );
+  leftLine.setAttribute("stroke", leftSeries.color || "#1d3f8b");
+  leftLine.setAttribute("fill", "none");
+  leftLine.setAttribute("stroke-width", leftSeries.strokeWidth || "2");
+  svg.appendChild(leftLine);
+
+  const rightLine = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  rightLine.setAttribute(
+    "d",
+    buildLinePath(rightSeries.rows, scaleX, scaleYRight, rightSeries.step)
+  );
+  rightLine.setAttribute("stroke", rightSeries.color || "#b22234");
+  rightLine.setAttribute("fill", "none");
+  rightLine.setAttribute("stroke-width", rightSeries.strokeWidth || "2");
+  svg.appendChild(rightLine);
+
+  const startLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  startLabel.setAttribute("x", padding.left);
+  startLabel.setAttribute("y", height - 8);
+  startLabel.setAttribute("font-size", "12");
+  startLabel.setAttribute("fill", "#1f2a44");
+  startLabel.setAttribute("font-weight", "700");
+  startLabel.setAttribute("letter-spacing", "0.6");
+  startLabel.textContent = new Date(minDate).getFullYear();
+  svg.appendChild(startLabel);
+
+  const endLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  endLabel.setAttribute("x", width - padding.right);
+  endLabel.setAttribute("y", height - 8);
+  endLabel.setAttribute("text-anchor", "end");
+  endLabel.setAttribute("font-size", "12");
+  endLabel.setAttribute("fill", "#1f2a44");
+  endLabel.setAttribute("font-weight", "700");
+  endLabel.setAttribute("letter-spacing", "0.6");
+  endLabel.textContent = new Date(maxDate).getFullYear();
+  svg.appendChild(endLabel);
+
+  const labelFormatter =
+    options.labelFormatter || ((value) => `${formatNumber(value, 0)}%`);
+
+  const leftAxisLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  leftAxisLabel.setAttribute("x", padding.left);
+  leftAxisLabel.setAttribute("y", padding.top - 18);
+  leftAxisLabel.setAttribute("font-size", "11");
+  leftAxisLabel.setAttribute("fill", leftSeries.color || "#1d3f8b");
+  leftAxisLabel.setAttribute("font-weight", "700");
+  leftAxisLabel.setAttribute("letter-spacing", "0.6");
+  leftAxisLabel.textContent = options.leftAxisLabel || "";
+  svg.appendChild(leftAxisLabel);
+
+  const rightAxisLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  rightAxisLabel.setAttribute("x", width - padding.right);
+  rightAxisLabel.setAttribute("y", padding.top - 18);
+  rightAxisLabel.setAttribute("text-anchor", "end");
+  rightAxisLabel.setAttribute("font-size", "11");
+  rightAxisLabel.setAttribute("fill", rightSeries.color || "#b22234");
+  rightAxisLabel.setAttribute("font-weight", "700");
+  rightAxisLabel.setAttribute("letter-spacing", "0.6");
+  rightAxisLabel.textContent = options.rightAxisLabel || "";
+  svg.appendChild(rightAxisLabel);
+
+  const leftTopLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  leftTopLabel.setAttribute("x", padding.left);
+  leftTopLabel.setAttribute("y", padding.top - 4);
+  leftTopLabel.setAttribute("font-size", "12");
+  leftTopLabel.setAttribute("fill", leftSeries.color || "#1d3f8b");
+  leftTopLabel.setAttribute("font-weight", "700");
+  leftTopLabel.setAttribute("letter-spacing", "0.6");
+  leftTopLabel.textContent = labelFormatter(maxLeft);
+  svg.appendChild(leftTopLabel);
+
+  const rightTopLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  rightTopLabel.setAttribute("x", width - padding.right);
+  rightTopLabel.setAttribute("y", padding.top - 4);
+  rightTopLabel.setAttribute("text-anchor", "end");
+  rightTopLabel.setAttribute("font-size", "12");
+  rightTopLabel.setAttribute("fill", rightSeries.color || "#b22234");
+  rightTopLabel.setAttribute("font-weight", "700");
+  rightTopLabel.setAttribute("letter-spacing", "0.6");
+  rightTopLabel.textContent = labelFormatter(maxRight);
+  svg.appendChild(rightTopLabel);
+}
+
+function renderChartPair(primarySvg, cloneSvg, seriesList, options = {}) {
+  renderMultiLineChart(primarySvg, seriesList, options);
+  renderMultiLineChart(cloneSvg, seriesList, options);
 }
 
 const HOME_PRICE_CSV = `date\tmedian_sales_price_usd\tseries_id\tfrequency\tunits
@@ -1117,6 +1639,189 @@ async function loadHomePriceChart() {
     renderLineChart(elements.homePriceChart, rows);
   }
 }
+
+async function loadMoneySupplyChart() {
+  if (!elements.chartMoneySupply) {
+    return;
+  }
+  setChartStatus("chartStatusMoneySupply", "Loading data...");
+  try {
+    const baseYear = 1971;
+    const [m2Rows, cpiRows] = await Promise.all([
+      fetchFredSeries(FRED_SERIES.m2),
+      fetchFredSeries(FRED_SERIES.cpi),
+    ]);
+    const m2Change = percentChangeSeries(
+      filterFromYear(m2Rows, baseYear),
+      baseYear
+    );
+    const purchasingPowerChange = percentChangeSeries(
+      filterFromYear(cpiRows, baseYear),
+      baseYear,
+      true
+    );
+    renderDualAxisChart(
+      elements.chartMoneySupply,
+      { rows: purchasingPowerChange.rows, color: CHART_COLORS.purchasingPower },
+      { rows: m2Change.rows, color: CHART_COLORS.m2 },
+      {
+        labelFormatter: (value) => `${formatNumber(value, 0)}%`,
+        leftAxisLabel: "Purchasing power",
+        rightAxisLabel: "Money supply",
+      }
+    );
+    renderDualAxisChart(
+      elements.chartMoneySupplyClone,
+      { rows: purchasingPowerChange.rows, color: CHART_COLORS.purchasingPower },
+      { rows: m2Change.rows, color: CHART_COLORS.m2 },
+      {
+        labelFormatter: (value) => `${formatNumber(value, 0)}%`,
+        leftAxisLabel: "Purchasing power",
+        rightAxisLabel: "Money supply",
+      }
+    );
+    setChartStatus("chartStatusMoneySupply", "");
+  } catch (error) {
+    renderEmptyChart(elements.chartMoneySupply, "Data unavailable");
+    setChartStatus("chartStatusMoneySupply", "Data unavailable. Start python3 server.py.");
+  }
+}
+
+async function loadAssetWageChart() {
+  if (!elements.chartAssetWages) {
+    return;
+  }
+  setChartStatus("chartStatusAssetWages", "Loading data...");
+  try {
+    const baseYear = 1971;
+    const [incomeRows, homeRows] = await Promise.all([
+      fetchFredSeries(FRED_SERIES.income),
+      fetchFredSeries(FRED_SERIES.home),
+    ]);
+    const incomeIndexed = indexSeries(filterFromYear(incomeRows, baseYear), baseYear);
+    const homeIndexed = indexSeries(filterFromYear(homeRows, baseYear), baseYear);
+    renderChartPair(
+      elements.chartAssetWages,
+      elements.chartAssetWagesClone,
+      [
+        { rows: incomeIndexed.rows, color: CHART_COLORS.wages },
+        { rows: homeIndexed.rows, color: CHART_COLORS.home },
+      ]
+    );
+    const statusParts = [];
+    if (incomeIndexed.baseYearUsed && incomeIndexed.baseYearUsed !== baseYear) {
+      statusParts.push(`Income series starts ${incomeIndexed.baseYearUsed}.`);
+    }
+    setChartStatus("chartStatusAssetWages", statusParts.join(" "));
+  } catch (error) {
+    renderEmptyChart(elements.chartAssetWages, "Data unavailable");
+    setChartStatus("chartStatusAssetWages", "Data unavailable. Start python3 server.py.");
+  }
+}
+
+async function loadPurchasingPowerChart() {
+  if (!elements.chartPurchasingPower) {
+    return;
+  }
+  setChartStatus("chartStatusPurchasingPower", "Loading data...");
+  try {
+    const baseYear = 1971;
+    const cpiRows = await fetchFredSeries(FRED_SERIES.cpi);
+    const purchasingPower = computePurchasingPower(
+      filterFromYear(cpiRows, baseYear),
+      baseYear
+    );
+    renderChartPair(
+      elements.chartPurchasingPower,
+      elements.chartPurchasingPowerClone,
+      [{ rows: purchasingPower.rows, color: CHART_COLORS.purchasingPower }]
+    );
+    const last = purchasingPower.rows[purchasingPower.rows.length - 1];
+    const status = last ? `Latest: ${formatNumber(last.value, 0)} cents.` : "";
+    setChartStatus("chartStatusPurchasingPower", status);
+  } catch (error) {
+    renderEmptyChart(elements.chartPurchasingPower, "Data unavailable");
+    setChartStatus("chartStatusPurchasingPower", "Data unavailable. Start python3 server.py.");
+  }
+}
+
+async function loadFedBalanceChart() {
+  if (!elements.chartFedBalance) {
+    return;
+  }
+  setChartStatus("chartStatusFedBalance", "Loading data...");
+  try {
+    const baseYear = 1971;
+    const balanceRows = await fetchFredSeries(FRED_SERIES.fedBalance);
+    const filtered = filterFromYear(balanceRows, baseYear);
+    renderChartPair(
+      elements.chartFedBalance,
+      elements.chartFedBalanceClone,
+      [{ rows: filtered, color: CHART_COLORS.fedBalance, step: true }],
+      {
+        labelFormatter: (value) => `$${formatNumber(value / 1000000, 1)}T`,
+        eventMarkers: [
+          { year: 2008, label: "2008" },
+          { year: 2020, label: "2020" },
+        ],
+      }
+    );
+    setChartStatus("chartStatusFedBalance", "");
+  } catch (error) {
+    renderEmptyChart(elements.chartFedBalance, "Data unavailable");
+    setChartStatus("chartStatusFedBalance", "Data unavailable. Start python3 server.py.");
+  }
+}
+
+async function loadRealRatesChart() {
+  if (!elements.chartRealRates) {
+    return;
+  }
+  setChartStatus("chartStatusRealRates", "Loading data...");
+  try {
+    const baseYear = 1971;
+    const [cpiRows, fedFundsRows] = await Promise.all([
+      fetchFredSeries(FRED_SERIES.cpi),
+      fetchFredSeries(FRED_SERIES.fedFunds),
+    ]);
+    const inflationRows = computeYoYInflation(filterFromYear(cpiRows, baseYear));
+    const fedFunds = filterFromYear(fedFundsRows, baseYear);
+    const fedByMonth = new Map();
+    fedFunds.forEach((row) => {
+      const key = `${row.date.getFullYear()}-${row.date.getMonth()}`;
+      fedByMonth.set(key, row.value);
+    });
+    const realRateRows = [];
+    inflationRows.forEach((row) => {
+      const key = `${row.date.getFullYear()}-${row.date.getMonth()}`;
+      const fedValue = fedByMonth.get(key);
+      if (fedValue === undefined) {
+        return;
+      }
+      realRateRows.push({ date: row.date, value: row.value - fedValue });
+    });
+    renderChartPair(
+      elements.chartRealRates,
+      elements.chartRealRatesClone,
+      [{ rows: realRateRows, color: CHART_COLORS.realRate }],
+      { includeZero: true, zeroLine: true }
+    );
+    setChartStatus("chartStatusRealRates", "Negative values are below zero.");
+  } catch (error) {
+    renderEmptyChart(elements.chartRealRates, "Data unavailable");
+    setChartStatus("chartStatusRealRates", "Data unavailable. Start python3 server.py.");
+  }
+}
+
+async function loadMacroCharts() {
+  await Promise.all([
+    loadMoneySupplyChart(),
+    loadAssetWageChart(),
+    loadPurchasingPowerChart(),
+    loadFedBalanceChart(),
+    loadRealRatesChart(),
+  ]);
+}
 async function updateDashboard() {
   const selectedId = elements.currencySelect ? elements.currencySelect.value : "us";
   const country = countries.find((entry) => entry.id === selectedId);
@@ -1145,12 +1850,16 @@ async function updateDashboard() {
   lastMarketData = marketData;
   renderCoinGrid(COIN_CATALOG, marketData);
 
-  elements.silverPrice.textContent = marketData.silverPrice
-    ? formatNumber(marketData.silverPrice, 2)
-    : "-";
-  elements.goldPrice.textContent = marketData.goldPrice
-    ? formatNumber(marketData.goldPrice, 2)
-    : "-";
+  if (elements.silverPrice) {
+    elements.silverPrice.textContent = marketData.silverPrice
+      ? formatNumber(marketData.silverPrice, 2)
+      : "-";
+  }
+  if (elements.goldPrice) {
+    elements.goldPrice.textContent = marketData.goldPrice
+      ? formatNumber(marketData.goldPrice, 2)
+      : "-";
+  }
   if (elements.silverDollarNow && elements.goldDollarNow) {
     const silverNow = marketData.silverPrice
       ? marketData.silverPrice * COINAGE_1792.silverDollarOz
@@ -1172,20 +1881,33 @@ async function updateDashboard() {
     marketData.goldPrice,
     marketData.fxRate
   );
-  elements.homeOz.textContent = ratios.homeOz ? formatNumber(ratios.homeOz, 2) : "-";
-  elements.wageOz.textContent = ratios.wageOz ? formatNumber(ratios.wageOz, 2) : "-";
-  elements.homeWageRatio.textContent = ratios.ratio ? formatNumber(ratios.ratio, 2) : "-";
-  elements.homeOzGold.textContent = ratios.homeOzGold
-    ? formatNumber(ratios.homeOzGold, 2)
-    : "-";
-  elements.wageOzGold.textContent = ratios.wageOzGold
-    ? formatNumber(ratios.wageOzGold, 2)
-    : "-";
-  elements.homeWageRatioGold.textContent = ratios.ratioGold
-    ? formatNumber(ratios.ratioGold, 2)
-    : "-";
-
-  elements.ratioNote.textContent = `Prices in ${country.currencySymbol}. FX source: exchangerate.host.`;
+  if (elements.homeOz) {
+    elements.homeOz.textContent = ratios.homeOz ? formatNumber(ratios.homeOz, 2) : "-";
+  }
+  if (elements.wageOz) {
+    elements.wageOz.textContent = ratios.wageOz ? formatNumber(ratios.wageOz, 2) : "-";
+  }
+  if (elements.homeWageRatio) {
+    elements.homeWageRatio.textContent = ratios.ratio ? formatNumber(ratios.ratio, 2) : "-";
+  }
+  if (elements.homeOzGold) {
+    elements.homeOzGold.textContent = ratios.homeOzGold
+      ? formatNumber(ratios.homeOzGold, 2)
+      : "-";
+  }
+  if (elements.wageOzGold) {
+    elements.wageOzGold.textContent = ratios.wageOzGold
+      ? formatNumber(ratios.wageOzGold, 2)
+      : "-";
+  }
+  if (elements.homeWageRatioGold) {
+    elements.homeWageRatioGold.textContent = ratios.ratioGold
+      ? formatNumber(ratios.ratioGold, 2)
+      : "-";
+  }
+  if (elements.ratioNote) {
+    elements.ratioNote.textContent = `Prices in ${country.currencySymbol}. FX source: exchangerate.host.`;
+  }
 }
 
 function bindEvents() {
@@ -1217,15 +1939,89 @@ function centerMerchPreview() {
   grid.scrollLeft = scrollLeft;
 }
 
+function closeChartModal() {
+  if (!elements.chartModal) {
+    return;
+  }
+  elements.chartModal.classList.remove("is-open");
+  elements.chartModal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("charts-modal-open");
+  if (elements.chartModalCanvas) {
+    elements.chartModalCanvas.innerHTML = "";
+  }
+}
+
+function openChartModal(card) {
+  if (!elements.chartModal || !card) {
+    return;
+  }
+  const chartId = card.getAttribute("data-chart-id");
+  if (!chartId) {
+    return;
+  }
+  const sourceSvg = document.getElementById(chartId);
+  if (!sourceSvg) {
+    return;
+  }
+  const title = card.querySelector(".album-title");
+  const sub = card.querySelector(".album-sub");
+  const source = card.querySelector(".chart-source");
+
+  elements.chartModalTitle.textContent = title ? title.textContent : "";
+  elements.chartModalSub.textContent = sub ? sub.textContent : "";
+  elements.chartModalSource.textContent = source ? source.textContent : "";
+
+  if (elements.chartModalCanvas) {
+    elements.chartModalCanvas.innerHTML = "";
+    const clone = sourceSvg.cloneNode(true);
+    clone.removeAttribute("id");
+    elements.chartModalCanvas.appendChild(clone);
+  }
+
+  elements.chartModal.classList.add("is-open");
+  elements.chartModal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("charts-modal-open");
+}
+
+function bindChartModal() {
+  const album = document.querySelector(".chart-album");
+  if (!album) {
+    return;
+  }
+  album.addEventListener("click", (event) => {
+    const card = event.target.closest(".album-card");
+    if (!card) {
+      return;
+    }
+    openChartModal(card);
+  });
+
+  if (elements.chartModal) {
+    elements.chartModal.addEventListener("click", (event) => {
+      if (event.target && event.target.matches("[data-chart-close]")) {
+        closeChartModal();
+      }
+    });
+  }
+
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeChartModal();
+    }
+  });
+}
+
 function init() {
   populateCurrencies();
   bindEvents();
   bindHeaderCollapse();
+  bindChartModal();
   window.addEventListener("load", () => {
     centerMerchPreview();
   });
   window.addEventListener("resize", centerMerchPreview);
   updateDashboard();
+  loadMacroCharts();
   setInterval(updateDashboard, config.refreshMs);
 }
 

@@ -37,7 +37,7 @@
         <nav class="header-nav">
           <a class="header-nav-link" href="#coins">US Coins</a>
           <a class="header-nav-link" href="#shop">Shop</a>
-          <a class="header-nav-link" href="#dashboard">Charts</a>
+          <a class="header-nav-link" href="#charts">Charts</a>
         </nav>
       </header>
 
@@ -62,7 +62,6 @@
         </div>
       </section>
 
-  
       <section class="panel coin-panel" id="shop">
         
         <div class="panel-body">
@@ -132,6 +131,186 @@
         </div>
       </section>
 
+      <section class="panel" id="charts">
+        <div class="panel-title">Charts</div>
+        <div class="panel-body">
+          <div class="panel-note">Data indexed to 1971=100 unless noted.</div>
+          <div class="chart-album">
+            <div class="chart-track" aria-label="Scrolling chart carousel">
+              <article class="album-card album-feature" data-chart-id="chartMoneySupply">
+              <div class="album-title">Money Supply vs Purchasing Power</div>
+              <div class="album-sub">M2 rises as each dollar buys less.</div>
+              <div class="chart-legend">
+                <span class="legend-item">
+                  <span class="legend-swatch legend-pp"></span>
+                  Purchasing power of $1
+                </span>
+                <span class="legend-item">
+                  <span class="legend-swatch legend-m2"></span>
+                  M2 money supply
+                </span>
+              </div>
+              <svg
+                id="chartMoneySupply"
+                class="line-chart chart-canvas"
+                role="img"
+                aria-label="Money supply versus purchasing power"
+              ></svg>
+              <div id="chartStatusMoneySupply" class="chart-status">Loading data...</div>
+              <div class="chart-source">Source: FRED M2SL, CPIAUCSL.</div>
+              </article>
+
+              <article class="album-card" data-chart-id="chartAssetWages">
+              <div class="album-title">Asset Prices vs Wages</div>
+              <div class="album-sub">Indexed home prices vs income.</div>
+              <div class="chart-legend">
+                <span class="legend-item">
+                  <span class="legend-swatch legend-wages"></span>
+                  Median household income
+                </span>
+                <span class="legend-item">
+                  <span class="legend-swatch legend-home"></span>
+                  Home prices
+                </span>
+              </div>
+              <svg
+                id="chartAssetWages"
+                class="line-chart chart-canvas"
+                role="img"
+                aria-label="Asset prices versus wages"
+              ></svg>
+              <div id="chartStatusAssetWages" class="chart-status">Loading data...</div>
+              <div class="chart-source">
+                Source: FRED MEHOINUSA646N, MSPUS.
+              </div>
+              </article>
+
+              <article class="album-card" data-chart-id="chartPurchasingPower">
+              <div class="album-title">Dollar Purchasing Power Over Time</div>
+              <div class="album-sub">$1 in 1971 in today's cents.</div>
+              <svg
+                id="chartPurchasingPower"
+                class="line-chart chart-canvas"
+                role="img"
+                aria-label="Dollar purchasing power over time"
+              ></svg>
+              <div id="chartStatusPurchasingPower" class="chart-status">Loading data...</div>
+              <div class="chart-source">Source: FRED CPIAUCSL.</div>
+              </article>
+
+              <article class="album-card" data-chart-id="chartFedBalance">
+              <div class="album-title">Money Creation During Crises</div>
+              <div class="album-sub">Federal Reserve balance sheet steps.</div>
+              <svg
+                id="chartFedBalance"
+                class="line-chart chart-canvas"
+                role="img"
+                aria-label="Federal Reserve balance sheet"
+              ></svg>
+              <div id="chartStatusFedBalance" class="chart-status">Loading data...</div>
+              <div class="chart-source">Source: FRED WALCL.</div>
+              </article>
+
+              <article class="album-card" data-chart-id="chartRealRates">
+              <div class="album-title">Inflation vs Interest Rates</div>
+              <div class="album-sub">Real rates = CPI inflation minus Fed Funds.</div>
+              <svg
+                id="chartRealRates"
+                class="line-chart chart-canvas"
+                role="img"
+                aria-label="Real rates over time"
+              ></svg>
+              <div id="chartStatusRealRates" class="chart-status">Loading data...</div>
+              <div class="chart-source">Source: FRED CPIAUCSL, FEDFUNDS.</div>
+              </article>
+            </div>
+            <div class="chart-track chart-track-clone" aria-hidden="true">
+              <article class="album-card album-feature" data-chart-id="chartMoneySupply">
+                <div class="album-title">Money Supply vs Purchasing Power</div>
+                <div class="album-sub">M2 rises as each dollar buys less.</div>
+                <div class="chart-legend">
+                  <span class="legend-item">
+                    <span class="legend-swatch legend-pp"></span>
+                    Purchasing power of $1
+                  </span>
+                  <span class="legend-item">
+                    <span class="legend-swatch legend-m2"></span>
+                    M2 money supply
+                  </span>
+                </div>
+                <svg
+                  id="chartMoneySupplyClone"
+                  class="line-chart chart-canvas"
+                  role="img"
+                  aria-label="Money supply versus purchasing power"
+                ></svg>
+                <div class="chart-source">Source: FRED M2SL, CPIAUCSL.</div>
+              </article>
+
+              <article class="album-card" data-chart-id="chartAssetWages">
+                <div class="album-title">Asset Prices vs Wages</div>
+                <div class="album-sub">Indexed home prices vs income.</div>
+                <div class="chart-legend">
+                  <span class="legend-item">
+                    <span class="legend-swatch legend-wages"></span>
+                    Median household income
+                  </span>
+                  <span class="legend-item">
+                    <span class="legend-swatch legend-home"></span>
+                    Home prices
+                  </span>
+                </div>
+                <svg
+                  id="chartAssetWagesClone"
+                  class="line-chart chart-canvas"
+                  role="img"
+                  aria-label="Asset prices versus wages"
+                ></svg>
+                <div class="chart-source">
+                  Source: FRED MEHOINUSA646N, MSPUS.
+                </div>
+              </article>
+
+              <article class="album-card" data-chart-id="chartPurchasingPower">
+                <div class="album-title">Dollar Purchasing Power Over Time</div>
+                <div class="album-sub">$1 in 1971 in today's cents.</div>
+                <svg
+                  id="chartPurchasingPowerClone"
+                  class="line-chart chart-canvas"
+                  role="img"
+                  aria-label="Dollar purchasing power over time"
+                ></svg>
+                <div class="chart-source">Source: FRED CPIAUCSL.</div>
+              </article>
+
+              <article class="album-card" data-chart-id="chartFedBalance">
+                <div class="album-title">Money Creation During Crises</div>
+                <div class="album-sub">Federal Reserve balance sheet steps.</div>
+                <svg
+                  id="chartFedBalanceClone"
+                  class="line-chart chart-canvas"
+                  role="img"
+                  aria-label="Federal Reserve balance sheet"
+                ></svg>
+                <div class="chart-source">Source: FRED WALCL.</div>
+              </article>
+
+              <article class="album-card" data-chart-id="chartRealRates">
+                <div class="album-title">Inflation vs Interest Rates</div>
+                <div class="album-sub">Real rates = CPI inflation minus Fed Funds.</div>
+                <svg
+                  id="chartRealRatesClone"
+                  class="line-chart chart-canvas"
+                  role="img"
+                  aria-label="Real rates over time"
+                ></svg>
+                <div class="chart-source">Source: FRED CPIAUCSL, FEDFUNDS.</div>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="panel" id="coins">
         <div class="panel-title">Live Metal Value of Circulating U.S. Coins</div>
         <div class="panel-body">
@@ -186,6 +365,19 @@
         </div>
       </section>
 
+    </div>
+
+    <div id="chartModal" class="chart-modal" aria-hidden="true">
+      <div class="chart-modal-backdrop" data-chart-close="true"></div>
+      <div class="chart-modal-panel" role="dialog" aria-modal="true">
+        <button class="chart-modal-close" type="button" data-chart-close="true">
+          X
+        </button>
+        <div id="chartModalTitle" class="chart-modal-title"></div>
+        <div id="chartModalSub" class="chart-modal-sub"></div>
+        <div id="chartModalCanvas" class="chart-modal-canvas"></div>
+        <div id="chartModalSource" class="chart-modal-source"></div>
+      </div>
     </div>
 
     <script src="app.js"></script>
